@@ -42,7 +42,7 @@ class DQN:
 	
 				#Choose action based on the exploration
 				if(is_explore == True):
-					action = int(np.random.uniform(0 , len(self.actions)))
+					action = self.actions[int(np.random.uniform(0 , len(self.actions)))]
 				
 				else:
 					#The predict function in model gives the reward, given a state and an action
