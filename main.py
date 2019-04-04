@@ -1,20 +1,26 @@
 import gym
 import numpy as np
 from scipy import misc
+from deep_q_net import DQN
 from tensorflow import keras
 
+# If running on Gabe's laptop..
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 def main():
     env = gym.make('Pong-v0')
-    for i_episode in range(10):
-        observation = env.reset()
-        for t in range(100):
-            env.render()
-            action = env.action_space.sample()
-            observation, reward, done, _ = env.step(action)
-            if done:
-                print("Episode finished after {} time steps".format(t + 1))
-                break
+    dqn = DQN(env, 1000, 50000, .9, .25, 64, 10)
+    dqn.train()
+    # for i_episode in range(10):
+    #     observation = env.reset()
+    #     for t in range(100):
+    #         env.render()
+    #         action = env.action_space.sample()
+    #         observation, reward, done, _ = env.step(action)
+    #         if done:
+    #             print("Episode finished after {} time steps".format(t + 1))
+    #             break
     env.close()
 
 
