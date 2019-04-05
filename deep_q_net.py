@@ -1,17 +1,16 @@
-import state
-import random
 import numpy as np
 from cnn import get_cnn
+from collections import deque
+import random
 
 
 class DQN:
     def __init__(self,
-                 environment,
-                 episodes,
-                 num_exp,
+                 actions,
                  exploration,
+                 exploration_decay,
+                 exploration_min,
                  gamma,
-                 num_epoch,
                  num_batch):
         """
         Initializes the DQN.
@@ -19,101 +18,88 @@ class DQN:
         :param environment: Gym Implementation of the game to be trained on
         :param episodes: Number of times the game is repeated from start in
                          order to train
-        :param num_exp: The size of recall list
         :param exploration: The probability of exploration
         :param gamma: The delayed depreciation for next state
         :param num_epoch: How many epochs do you want to train the model?
         :param num_batch: The batch size for model during training
         """
-        self.model = get_cnn(environment.action_space.n)
-        self.environment = environment
-        # List of integers that represents all the actions possible in the game
-        self.actions = range(environment.action_space.n)
-        self.episodes = episodes
-        self.num_exp = num_exp
+        self.exploration = exploration
+        self.exploration_min = exploration_min
+        self.exploration_decay = exploration_decay
+        self.transitions = deque(maxlen=1000)
+        self.actions = actions
+        self.num_actions = len(actions)
+        self.model = get_cnn(self.num_actions)
         self.exploration = exploration
         self.gamma = gamma
-        self.num_epoch = num_epoch
-        self.num_batch = num_batch
+        self.batch_size = num_batch
 
-    # epsilon and decay
+    def get_action(self, state):
+        """
+        Selects the action with the highest estimated reward with probability
+        (1 - \epsilon) approximated by our model. Selects a random action from
+        the state space with probability \epsilon.
+        :param state: The current state. s_t
+        :param env: The environment, used to grab a random action.
+        :param epsilon: Probability a random action will be chosen. \epsilon
+        :return:
+        """
+        if np.random.rand() <= self.exploration:
+            return random.sample(self.actions, 1)
+        return self.predict_best_action(state)
+
+    def store_instance(self, state, action, next_state, reward, is_term):
+        self.transitions.append((state, action, next_state, reward, is_term))
 
     def train(self):
-        for i in range(self.episodes):
+        """
 
-            _state = state.preprocess_pong_img(
-                self.environment.reset())
+        :return:
+        """
+        if len(self.transitions) < self.batch_size:
+            return
 
-            # Initialize recall states
-            transition_sets = []
+        batch = random.sample(self.transitions, self.batch_size)
 
-            for j in range(self.num_exp):
+        train_x = []
+        train_y = []
+        for state, action, next_state, reward, is_term in batch:
+            train_x.append(state)
+            if is_term:
+                train_y.append(reward)
+            else:
+                # If the state is not terminal, move one state forward to
+                # compute the terminal state reward
+                full_reward = reward + self.gamma * np.max(
+                    self.model.predict(DQN.eval_lazy_state(next_state))[0])
+                predictions = self.model.predict(DQN.eval_lazy_state(state))
+                predictions[0][action] = full_reward
+                train_y.append(predictions)
 
-                # Random checking for exploration
-                is_explore = np.random.binomial(1, self.exploration)
+        # Train the model based on train inputs and train labels
+        train_x = np.array(train_x)
+        train_labels = np.array(train_y).reshape(
+            self.batch_size, self.num_actions)
+        self.model.fit(train_x, train_labels, batch_size=self.batch_size)
+        if self.exploration > self.exploration_min:
+            self.exploration *= self.exploration_decay
 
-                # Choose action based on the exploration
-                if is_explore:
-                    action = self.environment.action_space.sample()
-                else:
-                    # The predict function in model gives the reward, given a
-                    # state and an action. This gives the most rewarding action
+    def predict_best_action(self, state):
+        """
+        Predicts the best action for the corrent state for the deep-q network
+        :param curr_state: The current preprocessed state of the game
+        :return:
+        """
+        return self.actions[np.argmax(
+            self.model.predict(DQN.eval_lazy_state(state))[0])]
 
-                    best_act = np.argmax(
-                        self.model.predict(_state)[0])
-                    action = self.actions[best_act]
+    def save(self):
+        self.model.save_weights('my_model_weights.h5')
 
-                # Apply this action to the environment, get the next state and
-                # reward, preprocess the next state
-                _n_state, reward, is_term, _ = self.environment.step(action)
-                _n_state = state.preprocess_pong_img(_n_state)
+    def load(self):
+        self.model.load_weights('my_model_weights.h5')
 
-                # Save all to transition_sets
-                transition_sets.append((
-                    _state, action, _n_state, reward, is_term))
+    @staticmethod
+    def eval_lazy_state(state):
+        return np.expand_dims(np.array(state), 0)
 
-                if is_term:
-                    break
-
-                # Change to next state
-                _state = _n_state
-
-            if len(transition_sets) >= self.num_batch:
-                # Training the model based on the recall states
-
-                batch = random.sample(transition_sets, self.num_batch)
-
-                # Label is the prospective rewards
-                train_labels = []
-                train_x = []
-
-                for init_st, act, next_st, reward, is_term in batch:
-                    train_x.append(init_st)
-                    if is_term:
-                        train_labels.append(reward)
-                    else:
-                        # If the state is not terminal, move one state forward to
-                        # compute the terminal state reward
-                        full_reward = reward + self.gamma * np.max(
-                            self.model.predict(next_st)[0])
-                        pred = self.model.predict(init_st)
-                        pred[0][act] = full_reward
-                        train_labels.append(pred)
-
-                # Train the model based on train inputs and train labels
-                train_x = np.squeeze(np.array(train_x), 1)
-                train_labels = np.array(train_labels).reshape(10, 6)
-                self.model.fit(train_x,
-                               train_labels,
-                               batch_size=self.num_batch)
-
-# def predict_best_action(self , curr_state):
-# 	"""
-# 	Predicts the best action for the corrent state for the deep-q network
-# 		@param:
-# 			curr_state: The current preprocessed state of the game
-# 	"""
-# 	return self.actions[np.argmax([
-# 		self.model.predict(state.compress(curr_state , act))
-# 		for act in self.actions)])]
-#
