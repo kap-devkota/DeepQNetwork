@@ -18,7 +18,13 @@ def main():
 
     action_list = range(env.action_space.n)
     dqn = DQN(
-        action_list, EPSILON, EPSILON_DECAY, EPSILON_MIN, GAMMA, BATCH_SIZE)
+        action_list,
+        EPSILON,
+        EPSILON_DECAY,
+        EPSILON_MIN,
+        GAMMA,
+        2560,
+        BATCH_SIZE)
 
     for i in range(EPISODES):
         state = env.reset()
@@ -30,7 +36,7 @@ def main():
             # reward, preprocess the next state
             next_state, reward, is_term, _ = env.step(action)
 
-            dqn.store_instance(state, action, next_state, reward, is_term)
+            dqn.store(state, action, next_state, reward, is_term)
 
             if is_term:
                 break

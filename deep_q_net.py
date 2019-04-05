@@ -13,7 +13,7 @@ class DQN:
                  reward_decay,
                  deque_size,
                  batch_size,
-                model = None):
+                 model = None):
         """
         Initializes the DQN.
 
@@ -39,9 +39,10 @@ class DQN:
 
         self.batch_size = batch_size
 
-        self.model = get_cnn(self.num_actions)
+        if model is None:
+            self.model = get_cnn(self.num_actions)
         return
-        
+
     def set_model(self , model):
         """
         Sets the model of the DQN network
@@ -103,7 +104,7 @@ class DQN:
             else:
                 # If the state is not terminal, move one state forward to
                 # compute the terminal state reward
-                full_reward = reward + self.gamma * np.max(
+                full_reward = reward + self.reward_decay * np.max(
                     self.model.predict(DQN.eval_lazy_state(next_state))[0])
                 predictions = self.model.predict(DQN.eval_lazy_state(state))
                 predictions[0][action] = full_reward
