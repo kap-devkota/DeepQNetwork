@@ -10,8 +10,10 @@ class DQN:
                  exploration,
                  exploration_decay,
                  exploration_min,
-                 gamma,
-                 num_batch):
+                 reward_decay,
+                 deque_size,
+                 batch_size,
+                model = None):
         """
         Initializes the DQN.
 
@@ -25,15 +27,30 @@ class DQN:
         """
         self.exploration = exploration
         self.exploration_min = exploration_min
+        
         self.exploration_decay = exploration_decay
-        self.transitions = deque(maxlen=1000)
+        self.transitions = deque(maxlen = deque_size)
+        
         self.actions = actions
         self.num_actions = len(actions)
-        self.model = get_cnn(self.num_actions)
         self.exploration = exploration
-        self.gamma = gamma
-        self.batch_size = num_batch
+        
+        self.reward_decay = reward_decay
 
+        self.batch_size = batch_size
+
+        self.model = get_cnn(self.num_actions)
+        return
+        
+    def set_model(self , model):
+        """
+        Sets the model of the DQN network
+        @params:
+            model: The Model (Can be both DQN or a simple Q-Table)
+        """
+        self.model = model
+        return
+    
     def get_action(self, state):
         """
         Selects the action with the highest estimated reward with probability
@@ -48,18 +65,34 @@ class DQN:
             return random.sample(self.actions, 1)
         return self.predict_best_action(state)
 
-    def store_instance(self, state, action, next_state, reward, is_term):
+    def store(self, state, action, next_state, reward, is_term):
+        """
+        Store the 5-tuple representing state transitions into the deque
+        :param state: (84 x 84 x 4) image containing the current state
+        :param action: An integer representing the action taken during the state
+        :param next_state: (84 x 84 x 4) image representing the next state after the action
+                        is applied
+        :param reward: A float representing the reward
+        :param is_term: A boolean value representing if the state is terminal
+        """
         self.transitions.append((state, action, next_state, reward, is_term))
 
-    def train(self):
+        
+    def train(self , num_epochs = 1 , num_samples_scale = 10):
         """
+        Trains the DQN model from the samples collected in the deque
+        :param num_epochs: Then number of times samples extracted from the deque is trained
+                            on
+        :param num_samples_scale: The ratio of the sample to the batch size
 
-        :return:
+        :return: NoneType
         """
-        if len(self.transitions) < self.batch_size:
+        num_samples = self.batch_size * num_samples_scale
+        
+        if len(self.transitions) < num_samples:
             return
-
-        batch = random.sample(self.transitions, self.batch_size)
+        
+        batch = random.sample(self.transitions, num_samples)
 
         train_x = []
         train_y = []
@@ -79,8 +112,8 @@ class DQN:
         # Train the model based on train inputs and train labels
         train_x = np.array(train_x)
         train_labels = np.array(train_y).reshape(
-            self.batch_size, self.num_actions)
-        self.model.fit(train_x, train_labels, batch_size=self.batch_size)
+            num_samples, self.num_actions)
+        self.model.fit(train_x, train_labels, batch_size = self.batch_size)
         if self.exploration > self.exploration_min:
             self.exploration *= self.exploration_decay
 
