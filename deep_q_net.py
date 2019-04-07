@@ -110,10 +110,9 @@ class DQN:
                 # Find the action that yields the largest reward in the next state
                 # and find the full_reward label for that action
                 next_state_pred = self.model.predict(DQN.eval_lazy_state(next_state))[0]
-                pred_action = self.actions[np.argmax(next_state_pred)]
                 pred_reward = reward + self.reward_decay * np.max(next_state_pred)
 
-                predictions[0][pred_action] = pred_reward
+                predictions[0][action] = pred_reward
                 train_y.append(predictions)
 
         # Train the model based on train inputs and train labels
