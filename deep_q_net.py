@@ -41,6 +41,7 @@ class DQN:
 
         if model is None:
             self.model = get_cnn(self.num_actions)
+
         return
 
     def set_model(self , model):
@@ -102,12 +103,17 @@ class DQN:
             if is_term:
                 train_y.append(reward)
             else:
-                # If the state is not terminal, move one state forward to
-                # compute the terminal state reward
-                full_reward = reward + self.reward_decay * np.max(
-                    self.model.predict(DQN.eval_lazy_state(next_state))[0])
+
+                # Find the predicted reward for all action using the deep model
                 predictions = self.model.predict(DQN.eval_lazy_state(state))
-                predictions[0][action] = full_reward
+
+                # Find the action that yields the largest reward in the next state
+                # and find the full_reward label for that action
+                next_state_pred = self.model.predict(DQN.eval_lazy_state(next_state))[0]
+                pred_action = self.actions[np.argmax(next_state_pred)]
+                pred_reward = reward + self.reward_decay * np.max(next_state_pred)
+
+                predictions[0][pred_action] = pred_reward
                 train_y.append(predictions)
 
         # Train the model based on train inputs and train labels
