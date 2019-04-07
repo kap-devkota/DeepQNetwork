@@ -3,11 +3,11 @@ from deep_q_net import DQN
 from atari_wrappers import WarpFrame, FrameStack
 
 EPISODES = 1000
-MAX_FRAMES = 200
+MAX_FRAMES = 2000
 EPSILON = .95
 EPSILON_DECAY = .99
 EPSILON_MIN = .05
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 GAMMA = .95
 
 

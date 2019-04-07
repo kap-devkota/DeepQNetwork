@@ -13,7 +13,8 @@ class DQN:
                  reward_decay,
                  deque_size,
                  batch_size,
-                 model = None):
+                 exploration_update=1000,
+                 model=None):
         """
         Initializes the DQN.
 
@@ -25,11 +26,15 @@ class DQN:
         :param num_epoch: How many epochs do you want to train the model?
         :param num_batch: The batch size for model during training
         """
-        self.exploration = exploration
+
+        self.exploration_max = exploration
         self.exploration_min = exploration_min
-        
+        self.exploration = exploration
         self.exploration_decay = exploration_decay
-        self.transitions = deque(maxlen = deque_size)
+        self.exploration_update = exploration_update
+        self.exploration_counter = 0
+
+        self.transitions = deque(maxlen=deque_size)
         
         self.actions = actions
         self.num_actions = len(actions)
@@ -44,7 +49,7 @@ class DQN:
 
         return
 
-    def set_model(self , model):
+    def set_model(self, model):
         """
         Sets the model of the DQN network
         @params:
@@ -52,18 +57,40 @@ class DQN:
         """
         self.model = model
         return
+
+    def reset_exploration(self):
+        """
+        Resets the exploration probability
+        :return:
+        """
+        self.exploration = self.exploration_max
+
+    def update_exploration(self):
+        """
+        Update the exploration probability if the number of iterations reaches a point
+        :return:
+        """
+        if self.exploration <= self.exploration_min:
+            return
+
+        self.exploration_counter += 1
+        if self.exploration_counter == self.exploration_update:
+            self.exploration_counter = 0
+            self.exploration *= self.exploration_decay
+
+        return
     
-    def get_action(self, state):
+    def get_action(self, state, is_train=True):
         """
         Selects the action with the highest estimated reward with probability
         (1 - \epsilon) approximated by our model. Selects a random action from
         the state space with probability \epsilon.
         :param state: The current state. s_t
-        :param env: The environment, used to grab a random action.
-        :param epsilon: Probability a random action will be chosen. \epsilon
+        :param is_train: Checks if the get_action mode is train or test
         :return:
         """
-        if np.random.rand() <= self.exploration:
+        self.update_exploration()
+        if np.random.rand() <= self.exploration and is_train:
             return random.sample(self.actions, 1)
         return self.predict_best_action(state)
 
@@ -80,11 +107,9 @@ class DQN:
         self.transitions.append((state, action, next_state, reward, is_term))
 
         
-    def train(self , num_epochs = 1 , num_samples_scale = 10):
+    def train(self, num_samples_scale=10):
         """
         Trains the DQN model from the samples collected in the deque
-        :param num_epochs: Then number of times samples extracted from the deque is trained
-                            on
         :param num_samples_scale: The ratio of the sample to the batch size
 
         :return: NoneType
@@ -119,14 +144,14 @@ class DQN:
         train_x = np.array(train_x)
         train_labels = np.array(train_y).reshape(
             num_samples, self.num_actions)
-        self.model.fit(train_x, train_labels, batch_size = self.batch_size)
+        self.model.fit(train_x, train_labels, batch_size=self.batch_size)
         if self.exploration > self.exploration_min:
             self.exploration *= self.exploration_decay
 
     def predict_best_action(self, state):
         """
         Predicts the best action for the corrent state for the deep-q network
-        :param curr_state: The current preprocessed state of the game
+        :param state: The current preprocessed state of the game
         :return:
         """
         return self.actions[np.argmax(
