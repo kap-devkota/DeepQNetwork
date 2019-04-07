@@ -130,7 +130,7 @@ class DQN:
             else:
 
                 # Find the predicted reward for all action using the deep model
-                predictions = self.model.predict(DQN.eval_lazy_state(state))
+                predictions = self.model.predict(DQN.eval_lazy_state(state))[0]
 
                 # Find the action that yields the largest reward in the next state
                 # and find the full_reward label for that action
