@@ -26,19 +26,17 @@ def main():
         2560,
         BATCH_SIZE)
 
+    reward_episodes = []
     for i in range(EPISODES):
         state = env.reset()
-        reward_per_epoch = 0
-        reward_episodes = []
 
+        # Collection of datapoints
         for j in range(MAX_FRAMES):
             action = dqn.get_action(state)
 
             # Apply this action to the environment, get the next state and
             # reward, preprocess the next state
             next_state, reward, is_term, _ = env.step(action)
-
-            reward_per_epoch += reward if reward >= 0 else reward * 10
 
             dqn.store(state, action, next_state, reward, is_term)
 
@@ -47,10 +45,21 @@ def main():
             # Change to next state
             state = next_state
 
-        print("------REWARD------" + str(reward_per_epoch))
-        reward_episodes.append(reward_per_epoch)
-
+        # Training the model after data collection
         dqn.train()
+
+        # Testing our model after training it
+        state = env.reset()
+        reward_per_epoch = 0
+        for j in range(MAX_FRAMES):
+            env.render()
+            action = dqn.get_action(state, is_train=False)
+            next_state, reward, is_term, _ = env.step(action)
+
+            reward_per_epoch += (reward if reward >= 0 else reward * 10)
+
+        print("------REWARD------\n=>" + str(reward_per_epoch))
+        reward_episodes.append(reward_per_epoch)
 
     dqn.save()
     env.close()

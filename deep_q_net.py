@@ -107,7 +107,7 @@ class DQN:
         self.transitions.append((state, action, next_state, reward, is_term))
 
         
-    def train(self, num_samples_scale=10):
+    def train(self, num_samples_scale=10, epochs = 2):
         """
         Trains the DQN model from the samples collected in the deque
         :param num_samples_scale: The ratio of the sample to the batch size
@@ -125,13 +125,14 @@ class DQN:
         train_y = []
         for state, action, next_state, reward, is_term in batch:
             train_x.append(state)
+            # Find the predicted reward for all action using the deep model
+            predictions = self.model.predict(DQN.eval_lazy_state(state))
+
             if is_term:
-                train_y.append(reward)
+                predictions[0][action] = reward
+                train_y.append(predictions)
+
             else:
-
-                # Find the predicted reward for all action using the deep model
-                predictions = self.model.predict(DQN.eval_lazy_state(state))[0]
-
                 # Find the action that yields the largest reward in the next state
                 # and find the full_reward label for that action
                 next_state_pred = self.model.predict(DQN.eval_lazy_state(next_state))[0]
@@ -142,9 +143,9 @@ class DQN:
 
         # Train the model based on train inputs and train labels
         train_x = np.array(train_x)
-        train_labels = np.array(train_y).reshape(
-            num_samples, self.num_actions)
-        self.model.fit(train_x, train_labels, batch_size=self.batch_size)
+        train_labels = np.array(train_y)
+        train_labels = train_labels.reshape(num_samples, self.num_actions)
+        self.model.fit(train_x, train_labels, batch_size=self.batch_size, epochs=epochs)
         if self.exploration > self.exploration_min:
             self.exploration *= self.exploration_decay
 

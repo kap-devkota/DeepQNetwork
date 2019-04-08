@@ -22,8 +22,7 @@ def get_cnn(final_layer_hidden_size):
         keras.layers.Dense(512),
         keras.layers.Activation('relu'),
         keras.layers.Dropout(rate=0.25),
-        keras.layers.Dense(final_layer_hidden_size),
-        keras.layers.Activation('softmax')
+        keras.layers.Dense(final_layer_hidden_size)
     ])
 
     model.compile(optimizer='Adam', loss=keras.losses.mean_squared_error)
