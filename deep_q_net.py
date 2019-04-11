@@ -66,8 +66,8 @@ class DQN:
         :param is_train: Checks if the get_action mode is train or test
         :return:
         """
-        if np.random.rand() <= self.exploration and is_train:
-            return random.sample(self.actions, 1)[0]
+        # if np.random.rand() <= self.exploration and is_train:
+        #     return random.sample(self.actions, 1)[0]
         return self.predict_best_action(state)
 
     def store(self, state, action, next_state, reward, is_term):
@@ -138,10 +138,14 @@ class DQN:
         return self.actions[l]
 
     def save(self):
+        print(self.model.get_weights())
         self.model.save_weights('my_model_weights.h5')
 
     def load(self):
+        print(self.model.get_weights())
+        print("loading")
         self.model.load_weights('my_model_weights.h5')
+        print(self.model.get_weights())
 
     @staticmethod
     def eval_lazy_state(state):
