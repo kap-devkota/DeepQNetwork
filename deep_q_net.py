@@ -1,5 +1,6 @@
 import numpy as np
 from cnn import get_cnn
+from cnn import callback
 from collections import deque
 import random
 
@@ -82,7 +83,7 @@ class DQN:
         """
         self.transitions.extend(info)
         
-    def train(self, num_samples_scale=2, epochs=1):
+    def train(self, num_samples_scale=2, epochs=5):
         """
         Trains the DQN model from the samples collected in the deque
         :param num_samples_scale: The ratio of the sample to the batch size
@@ -122,7 +123,7 @@ class DQN:
         train_x = np.array(train_x)
         train_y = np.array(train_y).reshape(num_samples, self.num_actions)
         self.model.fit(
-            train_x, train_y, batch_size=self.batch_size, epochs=epochs)
+            train_x, train_y, callbacks=[callback], batch_size=self.batch_size, epochs=epochs)
         self.update_exploration()
 
     def predict_best_action(self, state):
