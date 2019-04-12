@@ -66,11 +66,11 @@ class DQN:
         :param is_train: Checks if the get_action mode is train or test
         :return:
         """
-        # if np.random.rand() <= self.exploration and is_train:
-        #     return random.sample(self.actions, 1)[0]
+        if np.random.rand() <= self.exploration and is_train:
+            return random.sample(self.actions, 1)[0]
         return self.predict_best_action(state)
 
-    def store(self, state, action, next_state, reward, is_term):
+    def store(self, info):
         """
         Store the 5-tuple representing state transitions into the deque
         :param state: (84 x 84 x 4) image containing the current state
@@ -80,7 +80,7 @@ class DQN:
         :param reward: A float representing the reward
         :param is_term: A boolean value representing if the state is terminal
         """
-        self.transitions.append((state, action, next_state, reward, is_term))
+        self.transitions.extend(info)
         
     def train(self, num_samples_scale=2, epochs=1):
         """
@@ -115,16 +115,14 @@ class DQN:
                 pred_reward = reward + \
                               self.reward_decay * \
                               np.max(next_state_pred)
-
                 predictions[0][action] = pred_reward
                 train_y.append(predictions)
 
         # Train the model based on train inputs and train labels
-        train_x = np.array(train_x).reshape(num_samples, 4)
-        train_labels = np.array(train_y)
-        train_labels = train_labels.reshape(num_samples, self.num_actions)
+        train_x = np.array(train_x)
+        train_y = np.array(train_y).reshape(num_samples, self.num_actions)
         self.model.fit(
-            train_x, train_labels, batch_size=self.batch_size, epochs=epochs)
+            train_x, train_y, batch_size=self.batch_size, epochs=epochs)
         self.update_exploration()
 
     def predict_best_action(self, state):
@@ -138,17 +136,12 @@ class DQN:
         return self.actions[l]
 
     def save(self):
-        print(self.model.get_weights())
         self.model.save_weights('my_model_weights.h5')
 
     def load(self):
-        print(self.model.get_weights())
-        print("loading")
         self.model.load_weights('my_model_weights.h5')
-        print(self.model.get_weights())
 
     @staticmethod
     def eval_lazy_state(state):
-        return state
-        # return np.expand_dims(np.array(state), 0)
+        return np.expand_dims(np.array(state), 0)
 
