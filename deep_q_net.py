@@ -6,7 +6,7 @@ import random
 
 class DQN:
     def __init__(self,
-                 actions,
+                 num_actions,
                  exploration,
                  exploration_decay,
                  exploration_min,
@@ -32,8 +32,8 @@ class DQN:
 
         self.transitions = deque(maxlen=deque_size)
         
-        self.actions = actions
-        self.num_actions = len(actions)
+        self.actions = list(range(num_actions))
+        self.num_actions = num_actions
         self.exploration = exploration
         
         self.reward_decay = reward_decay
@@ -82,7 +82,7 @@ class DQN:
         """
         self.transitions.extend(info)
         
-    def train(self, num_samples_scale=2, epochs=1):
+    def train(self, num_samples_scale=10, epochs=1):
         """
         Trains the DQN model from the samples collected in the deque
         :param num_samples_scale: The ratio of the sample to the batch size
@@ -94,7 +94,7 @@ class DQN:
         if len(self.transitions) < num_samples:
             return
         
-        batch = random.sample(self.transitions, num_samples)
+        batch = random.sample(self.transitions, self.batch_size)
 
         train_x = []
         train_y = []
