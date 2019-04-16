@@ -14,7 +14,7 @@ DEQUE_SIZE = BATCH_SIZE * NUM_SAMPLES_SCALE * 2
 GAMMA = .95
 
 
-def main():
+def run():
     env = gym.make('Pong-v0')
     env = WarpFrame(env)
     env = FrameStack(env, 4)
@@ -41,6 +41,8 @@ def main():
             # Apply this action to the environment, get the next state and
             # reward, preprocess the next state
             next_state, reward, is_term, _ = env.step(action)
+
+            # reward = reward * 1000 if reward > 0 else reward
 
             print("<TRAIN {} : {}>".format(i, action))
 
@@ -79,10 +81,45 @@ def main():
 
                 reward_per_epoch += (reward if reward >= 0 else reward * 10)
 
-            print("------REWARD------\n=>" + str(reward_per_epoch))
+                state = next_state
 
-    # env.close()
+    env.close()
+
+
+def test():
+    env = gym.make('Pong-v0')
+    env = WarpFrame(env)
+    env = FrameStack(env, 4)
+
+    action_list = range(env.action_space.n)
+    dqn = DQN(
+        action_list,
+        EPSILON,
+        EPSILON_DECAY,
+        EPSILON_MIN,
+        GAMMA,
+        DEQUE_SIZE,
+        BATCH_SIZE)
+
+    dqn.load()
+
+    for i in range(1000):
+
+        state = env.reset()
+
+        while True:
+            env.render()
+            action = dqn.get_action(state, is_train=False)
+            next_state, reward, is_term, _ = env.step(action)
+
+            if is_term:
+                break
+
+            state = next_state
+
+    return
 
 
 if __name__ == '__main__':
-    main()
+    #run()
+    test()

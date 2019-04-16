@@ -69,17 +69,12 @@ class DQN:
         """
         if np.random.rand() <= self.exploration and is_train:
             return random.sample(self.actions, 1)[0]
-        return self.predict_best_action(state)
+        return self.predict_best_action(state, verbose=not is_train)
 
     def store(self, info):
         """
         Store the 5-tuple representing state transitions into the deque
-        :param state: (84 x 84 x 4) image containing the current state
-        :param action: An integer representing the action taken during the state
-        :param next_state: (84 x 84 x 4) image representing the next state after the action
-                        is applied
-        :param reward: A float representing the reward
-        :param is_term: A boolean value representing if the state is terminal
+        :param info: A deque type to be extended
         """
         self.transitions.extend(info)
         
@@ -87,7 +82,8 @@ class DQN:
         """
         Trains the DQN model from the samples collected in the deque
         :param num_samples_scale: The ratio of the sample to the batch size
-
+        :param epochs: The number of epochs that the model will run per
+                        training stage
         :return: NoneType
         """
         num_samples = self.batch_size * num_samples_scale
@@ -126,15 +122,20 @@ class DQN:
             train_x, train_y, callbacks=[callback], batch_size=self.batch_size, epochs=epochs)
         self.update_exploration()
 
-    def predict_best_action(self, state):
+    def predict_best_action(self, state, verbose=True):
         """
         Predicts the best action for the current state for the deep-q network
         :param state: The current preprocessed state of the game
+        :param verbose: Prints the reward for each action if true
         :return:
         """
-        l = self.model.predict(DQN.eval_lazy_state(state))[0]
-        l = np.argmax(l)
-        return self.actions[l]
+        act_pred = self.model.predict(DQN.eval_lazy_state(state))[0]
+
+        if verbose:
+            print(act_pred)
+
+        best_act = np.argmax(act_pred)
+        return self.actions[best_act]
 
     def save(self):
         self.model.save_weights('my_model_weights.h5')
