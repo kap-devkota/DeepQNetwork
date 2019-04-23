@@ -6,18 +6,14 @@ from atari_wrappers import wrap_deepmind
 PONG = 'Pong-v0'
 NUM_FRAMES_TO_STACK = 4
 EPISODES = 10000
-MAX_FRAMES = 200
+MAX_FRAMES = 400
 EPSILON = .95
-EPSILON_DECAY = .999
+EPSILON_DECAY = .9995
 EPSILON_MIN = .05
 BATCH_SIZE = 128
 NUM_SAMPLES_SCALE = 1
 DEQUE_SIZE = 100000
 GAMMA = .95
-
-# If running on Gabe's laptop..
-import os
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 def main():
@@ -33,6 +29,7 @@ def main():
         DEQUE_SIZE,
         BATCH_SIZE)
 
+    dqn.load()
     for i in range(EPISODES):
         state = env.reset()
 
@@ -45,7 +42,7 @@ def main():
             next_state, reward, is_term, _ = env.step(action)
             temp.append([state, action, next_state, reward, is_term])
 
-            if is_term or j == MAX_FRAMES - 1:
+            if is_term or j == MAX_FRAMES - 1 or reward != 0:
                 running_reward = 0
                 for k in reversed(range(len(temp))):
                     running_reward = temp[k][3] + GAMMA * running_reward
@@ -55,14 +52,16 @@ def main():
             # Change to next state
             state = next_state
         dqn.train(NUM_SAMPLES_SCALE)
-        if i % 100 == 0:
-            dqn.save()
+        if i % 1000 == 0:
+            print("Episode: {}".format(i))
+            print("Exploration: {}".format(dqn.exploration))
+            # dqn.save()
 
 
 def get_env(game_name):
     env = gym.make(game_name)
     if game_name == PONG:
-        env = wrap_deepmind(env, True, True, True, True)
+        env = wrap_deepmind(env, False, True, True, True)
     return env
 
 
