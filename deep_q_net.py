@@ -31,7 +31,7 @@ class DQN:
         self.exploration_decay = exploration_decay
 
         self.transitions = deque(maxlen=deque_size)
-        
+
         self.actions = list(range(num_actions))
         self.num_actions = num_actions
         self.exploration = exploration
@@ -120,7 +120,7 @@ class DQN:
 
         # Train the model based on train inputs and train labels
         train_x = np.array(train_x)
-        train_y = np.array(train_y).reshape(num_samples, self.num_actions)
+        train_y = np.array(train_y).reshape(self.batch_size, self.num_actions)
         self.model.fit(
             train_x, train_y, batch_size=self.batch_size, epochs=epochs)
         self.update_exploration()
@@ -135,11 +135,11 @@ class DQN:
         l = np.argmax(l)
         return self.actions[l]
 
-    def save(self):
-        self.model.save_weights('my_model_weights.h5')
+    def save(self, suffix):
+        self.model.save_weights('my_model_weights_{}.h5'.format(suffix))
 
-    def load(self):
-        self.model.load_weights('my_model_weights.h5')
+    def load(self, suffix):
+        self.model.load_weights('my_model_weights_{}.h5'.format(suffix))
 
     @staticmethod
     def eval_lazy_state(state):
