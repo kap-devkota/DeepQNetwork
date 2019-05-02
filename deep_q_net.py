@@ -6,14 +6,13 @@ import random
 
 class DQN:
     def __init__(self,
-                 actions,
+                 num_actions,
                  exploration,
                  exploration_decay,
                  exploration_min,
                  reward_decay,
                  deque_size,
                  batch_size,
-                 exploration_update=1000,
                  model=None):
         """
         Initializes the DQN.
@@ -27,17 +26,14 @@ class DQN:
         :param num_batch: The batch size for model during training
         """
 
-        self.exploration_max = exploration
         self.exploration_min = exploration_min
         self.exploration = exploration
         self.exploration_decay = exploration_decay
-        self.exploration_update = exploration_update
-        self.exploration_counter = 0
 
         self.transitions = deque(maxlen=deque_size)
-        
-        self.actions = actions
-        self.num_actions = len(actions)
+
+        self.actions = list(range(num_actions))
+        self.num_actions = num_actions
         self.exploration = exploration
         
         self.reward_decay = reward_decay
@@ -49,22 +45,6 @@ class DQN:
 
         return
 
-    def set_model(self, model):
-        """
-        Sets the model of the DQN network
-        @params:
-            model: The Model (Can be both DQN or a simple Q-Table)
-        """
-        self.model = model
-        return
-
-    def reset_exploration(self):
-        """
-        Resets the exploration probability
-        :return:
-        """
-        self.exploration = self.exploration_max
-
     def update_exploration(self):
         """
         Update the exploration probability if the number of iterations reaches a point
@@ -73,10 +53,7 @@ class DQN:
         if self.exploration <= self.exploration_min:
             return
 
-        self.exploration_counter += 1
-        if self.exploration_counter == self.exploration_update:
-            self.exploration_counter = 0
-            self.exploration *= self.exploration_decay
+        self.exploration *= self.exploration_decay
 
         return
     
@@ -89,12 +66,11 @@ class DQN:
         :param is_train: Checks if the get_action mode is train or test
         :return:
         """
-        self.update_exploration()
         if np.random.rand() <= self.exploration and is_train:
-            return random.sample(self.actions, 1)
+            return random.sample(self.actions, 1)[0]
         return self.predict_best_action(state)
 
-    def store(self, state, action, next_state, reward, is_term):
+    def store(self, info):
         """
         Store the 5-tuple representing state transitions into the deque
         :param state: (84 x 84 x 4) image containing the current state
@@ -104,10 +80,9 @@ class DQN:
         :param reward: A float representing the reward
         :param is_term: A boolean value representing if the state is terminal
         """
-        self.transitions.append((state, action, next_state, reward, is_term))
-
+        self.transitions.extend(info)
         
-    def train(self, num_samples_scale=10, epochs = 2):
+    def train(self, num_samples_scale=10, epochs=1):
         """
         Trains the DQN model from the samples collected in the deque
         :param num_samples_scale: The ratio of the sample to the batch size
@@ -119,7 +94,7 @@ class DQN:
         if len(self.transitions) < num_samples:
             return
         
-        batch = random.sample(self.transitions, num_samples)
+        batch = random.sample(self.transitions, self.batch_size)
 
         train_x = []
         train_y = []
@@ -135,34 +110,36 @@ class DQN:
             else:
                 # Find the action that yields the largest reward in the next state
                 # and find the full_reward label for that action
-                next_state_pred = self.model.predict(DQN.eval_lazy_state(next_state))[0]
-                pred_reward = reward + self.reward_decay * np.max(next_state_pred)
-
+                next_state_pred = self.model.predict(
+                    DQN.eval_lazy_state(next_state))[0]
+                pred_reward = reward + \
+                              self.reward_decay * \
+                              np.max(next_state_pred)
                 predictions[0][action] = pred_reward
                 train_y.append(predictions)
 
         # Train the model based on train inputs and train labels
         train_x = np.array(train_x)
-        train_labels = np.array(train_y)
-        train_labels = train_labels.reshape(num_samples, self.num_actions)
-        self.model.fit(train_x, train_labels, batch_size=self.batch_size, epochs=epochs)
-        if self.exploration > self.exploration_min:
-            self.exploration *= self.exploration_decay
+        train_y = np.array(train_y).reshape(self.batch_size, self.num_actions)
+        self.model.fit(
+            train_x, train_y, batch_size=self.batch_size, epochs=epochs)
+        self.update_exploration()
 
     def predict_best_action(self, state):
         """
-        Predicts the best action for the corrent state for the deep-q network
+        Predicts the best action for the current state for the deep-q network
         :param state: The current preprocessed state of the game
         :return:
         """
-        return self.actions[np.argmax(
-            self.model.predict(DQN.eval_lazy_state(state))[0])]
+        l = self.model.predict(DQN.eval_lazy_state(state))[0]
+        l = np.argmax(l)
+        return self.actions[l]
 
-    def save(self):
-        self.model.save_weights('my_model_weights.h5')
+    def save(self, suffix):
+        self.model.save_weights('my_model_weights_{}.h5'.format(suffix))
 
-    def load(self):
-        self.model.load_weights('my_model_weights.h5')
+    def load(self, suffix):
+        self.model.load_weights('my_model_weights_{}.h5'.format(suffix))
 
     @staticmethod
     def eval_lazy_state(state):

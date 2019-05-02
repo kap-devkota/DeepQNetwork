@@ -1,68 +1,70 @@
 import gym
+import pickle
 from deep_q_net import DQN
-from atari_wrappers import WarpFrame, FrameStack
+from collections import deque
+from atari_wrappers import wrap_deepmind
 
-EPISODES = 1000
-MAX_FRAMES = 2000
+PONG = 'Pong-v0'
+NUM_FRAMES_TO_STACK = 4
+EPISODES = 100000
+MAX_FRAMES = 6000
 EPSILON = .95
-EPSILON_DECAY = .99
+EPSILON_DECAY = .9999
 EPSILON_MIN = .05
 BATCH_SIZE = 128
+NUM_SAMPLES_SCALE = 1
+DEQUE_SIZE = 100000
 GAMMA = .95
 
 
 def main():
-    env = gym.make('Pong-v0')
-    env = WarpFrame(env)
-    env = FrameStack(env, 4)
+    env = get_env(game_name=PONG)
 
-    action_list = range(env.action_space.n)
+    num_actions = env.action_space.n
     dqn = DQN(
-        action_list,
+        num_actions,
         EPSILON,
         EPSILON_DECAY,
         EPSILON_MIN,
         GAMMA,
-        2560,
+        DEQUE_SIZE,
         BATCH_SIZE)
-
-    reward_episodes = []
     for i in range(EPISODES):
         state = env.reset()
 
         # Collection of datapoints
+        temp = deque(maxlen=MAX_FRAMES)
         for j in range(MAX_FRAMES):
-            action = dqn.get_action(state)
-
             # Apply this action to the environment, get the next state and
             # reward, preprocess the next state
+            action = dqn.get_action(state)
             next_state, reward, is_term, _ = env.step(action)
+            temp.append([state, action, next_state, reward, is_term])
 
-            dqn.store(state, action, next_state, reward, is_term)
-
-            if is_term:
+            if is_term or j == MAX_FRAMES - 1:
+                running_reward = 0
+                for k in reversed(range(len(temp))):
+                    if temp[k][3] != 0:
+                        running_reward = 0
+                    running_reward = temp[k][3] + GAMMA * running_reward
+                    temp[k][3] = running_reward
+                dqn.store(temp)
                 break
             # Change to next state
             state = next_state
+        dqn.train(NUM_SAMPLES_SCALE)
+        if i % 10000 == 0:
+            print("Episode: {}".format(i))
+            print("Exploration: {}".format(dqn.exploration))
+            dqn.save(i)
+    dqn.save("last")
+    pickle.dump(dqn.transitions, open("frames.pkl", "wb"))
 
-        # Training the model after data collection
-        dqn.train()
-
-        # Testing our model after training it
-        state = env.reset()
-        reward_per_epoch = 0
-        for j in range(MAX_FRAMES):
-            env.render()
-            action = dqn.get_action(state, is_train=False)
-            next_state, reward, is_term, _ = env.step(action)
-
-            reward_per_epoch += (reward if reward >= 0 else reward * 10)
-
-        print("------REWARD------\n=>" + str(reward_per_epoch))
-        reward_episodes.append(reward_per_epoch)
-
-    dqn.save()
-    env.close()
+def get_env(game_name):
+    env = gym.make(game_name)
+    if game_name == PONG:
+        env = wrap_deepmind(env, False, True, True, True)
+    return env
 
 
 if __name__ == '__main__':
