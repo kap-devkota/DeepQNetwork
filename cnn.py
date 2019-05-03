@@ -2,7 +2,11 @@ from tensorflow import keras
 
 
 def get_cnn(final_layer_hidden_size):
-
+    """
+    Gets a convolutional neural network that will approximate the Q function.
+    :param final_layer_hidden_size: The number of neurons in the last layer.
+    :return: The CNN.
+    """
     model = keras.models.Sequential([
         keras.layers.Conv2D(16,
                             (8, 8),

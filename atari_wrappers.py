@@ -1,3 +1,13 @@
+################################################################################
+#
+# Everything in this file was written by the authors of Open AI Gym. If the URL
+# has not changed an up to date version can be found at:
+# github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
+#
+#
+################################################################################
+
+
 import numpy as np
 import os
 
@@ -11,7 +21,7 @@ cv2.ocl.setUseOpenCL(False)
 from gym.wrappers import TimeLimit
 
 
-# https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
+#
 class NoopResetEnv(gym.Wrapper):
     def __init__(self, env, noop_max=30):
         """Sample initial states by taking random number of no-ops on reset.
@@ -30,7 +40,7 @@ class NoopResetEnv(gym.Wrapper):
             noops = self.override_num_noops
         else:
             noops = self.unwrapped.np_random.randint(1,
-                                                     self.noop_max + 1)  # pylint: disable=E1101
+                                                     self.noop_max + 1)
         assert noops > 0
         obs = None
         for _ in range(noops):
@@ -80,9 +90,9 @@ class EpisodicLifeEnv(gym.Wrapper):
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
         if lives < self.lives and lives > 0:
-            # for Qbert sometimes we stay in lives == 0 condition for a few frames
-            # so it's important to keep lives > 0, so that we only reset once
-            # the environment advertises done.
+            # for Qbert sometimes we stay in lives == 0 condition for a few
+            # frames so it's important to keep lives > 0, so that we only reset
+            # once the environment advertises done.
             done = True
         self.lives = lives
         return obs, reward, done, info
@@ -203,9 +213,8 @@ class FrameStack(gym.Wrapper):
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
-        self.observation_space = gym.spaces.Box(low=0, high=1,
-                                                shape=env.observation_space.shape,
-                                                dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=0, high=1, shape=env.observation_space.shape, dtype=np.float32)
 
     def observation(self, observation):
         # careful! This undoes the memory optimization, use

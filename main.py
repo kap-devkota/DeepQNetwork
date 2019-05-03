@@ -1,5 +1,4 @@
 import gym
-import pickle
 from deep_q_net import DQN
 from collections import deque
 from atari_wrappers import wrap_deepmind
@@ -40,6 +39,8 @@ def main():
             action = dqn.get_action(state)
             next_state, reward, is_term, _ = env.step(action)
             temp.append([state, action, next_state, reward, is_term])
+            if reward != 0:
+                print(reward)
 
             if is_term or j == MAX_FRAMES - 1:
                 running_reward = 0
@@ -53,17 +54,25 @@ def main():
             # Change to next state
             state = next_state
         dqn.train(NUM_SAMPLES_SCALE)
-        if i % 10000 == 0:
+        if i % 1000 == 0:
             print("Episode: {}".format(i))
             print("Exploration: {}".format(dqn.exploration))
             dqn.save(i)
     dqn.save("last")
-    pickle.dump(dqn.transitions, open("frames.pkl", "wb"))
+
 
 def get_env(game_name):
+    """
+    Wraps the environment in a couple of decorators formulated by deep mind, and
+    implemented by OpenAi that perform preprocessing.
+
+    :param game_name: The game that will be played.
+    :return: The wrapped environment.
+    """
+
     env = gym.make(game_name)
     if game_name == PONG:
-        env = wrap_deepmind(env, False, True, True, True)
+        env = wrap_deepmind(env, False, False, True, False)
     return env
 
 
